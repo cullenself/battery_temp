@@ -13,7 +13,17 @@ def readFile(filename):
 def plotTime(df, sat):
     df.plot(x='timestamp', y=['batt.temp.bus1', 'batt.temp.bus2', 'batt.temp.bus3', 'batt.temp.bus4'], kind='line', subplots=True, figsize=(8,8), style='.', title='Battery Pack Temperature vs Time, Satellite %s' % sat, legend=True)
     # depending on what I'm trying to show, I might set ylim=[-10,270] (or [-10,50] and ignore the outliers) to emphasize the relative temperature differences
+    #TODO: add 0 line 
 
 def plotDist(df, sat):
     df.plot(y=['batt.temp.bus1', 'batt.temp.bus2', 'batt.temp.bus3', 'batt.temp.bus4'], kind='hist', xlim=(-30,50), subplots=True, figsize=(8,8), title='Battery Pack Temperature Distribution, Satellite %s' % sat, legend=True)
     #TODO: make smaller boxes, more ticks
+
+def plotReduce(df, label):
+    temps = []
+    for row in df.itertuples():
+        for i in range(2, 5+1): 
+            if row[i]:
+                temps.append((row.timestamp, row[i]))
+    pandas.DataFrame(temps, columns=['timestamp', 'batt.temp']).plot(x='timestamp', y='batt.temp', kind='line', style='.', legend=False, title='Battery Pack Temperature vs Time (%s)' % label)
+    #TODO: format better
