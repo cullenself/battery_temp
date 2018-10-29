@@ -11,13 +11,20 @@ def readFile(filename):
     return df
 
 def plotTime(df, sat):
-    df.plot(x='timestamp', y=['batt.temp.bus1', 'batt.temp.bus2', 'batt.temp.bus3', 'batt.temp.bus4'], kind='line', subplots=True, figsize=(8,8), style='.', title='Battery Pack Temperature vs Time, Satellite %s' % sat, legend=True)
+    plots = df.plot(x='timestamp', y=['batt.temp.bus1', 'batt.temp.bus2', 'batt.temp.bus3', 'batt.temp.bus4'], kind='line', subplots=True, figsize=(8,8), style='.', title='Battery Pack Temperature vs Time, Satellite %s' % sat, legend=True)
+    for plot in plots:
+        plot.set_xlabel('Date')
+        plot.set_ylabel('Temperature (C)')
+        plot.axhline(y=0)
     # depending on what I'm trying to show, I might set ylim=[-10,270] (or [-10,50] and ignore the outliers) to emphasize the relative temperature differences
-    #TODO: add 0 line 
 
 def plotDist(df, sat):
-    df.plot(y=['batt.temp.bus1', 'batt.temp.bus2', 'batt.temp.bus3', 'batt.temp.bus4'], kind='hist', xlim=(-30,50), subplots=True, figsize=(8,8), title='Battery Pack Temperature Distribution, Satellite %s' % sat, legend=True)
-    #TODO: make smaller boxes, more ticks
+    bins = list(range(-30,51,5)) # set up bins for histogram
+    bins[6] = 0.01 # adjust slightly so that temperature at exactly 0 show below rather than above (i.e. [-5,0.01) rather than [-5,0))
+    plots = df.plot(y=['batt.temp.bus1', 'batt.temp.bus2', 'batt.temp.bus3', 'batt.temp.bus4'], kind='hist', xlim=(-30,50), bins=bins, subplots=True, sharex=False, figsize=(8,8), title='Battery Pack Temperature Distribution, Satellite %s' % sat, legend=True)
+    for plot in plots:
+        plot.set_xlabel('Temperature (C)')
+    #TODO: better ylabels
 
 def plotReduce(df, label):
     temps = []
@@ -25,5 +32,7 @@ def plotReduce(df, label):
         for i in range(2, 5+1): 
             if row[i]:
                 temps.append((row.timestamp, row[i]))
-    pandas.DataFrame(temps, columns=['timestamp', 'batt.temp']).plot(x='timestamp', y='batt.temp', kind='line', style='.', legend=False, title='Battery Pack Temperature vs Time (%s)' % label)
+    plot = pandas.DataFrame(temps, columns=['timestamp', 'batt.temp']).plot(x='timestamp', y='batt.temp', kind='line', style='.', legend=False, title='Battery Pack Temperature vs Time (%s)' % label)
+    plot.set_ylabel('Temperature (C)')
+    plot.set_xlabel('Date')
     #TODO: format better
