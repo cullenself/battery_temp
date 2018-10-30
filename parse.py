@@ -1,17 +1,38 @@
 import pandas
 from datetime import datetime
+from statistics import median
 
 # Histogram Bins
 BINS = list(range(-30,51,5)) # set up bins for histogram
 BINS[6] = 0.01 # adjust slightly so that temperature at exactly 0 show below rather than above (i.e. [-5,0.01) rather than [-5,0))
+# Outlier Filtering
+INNER_BOUND = 15 # max acceptable difference between bus temps for a single epoch
+OUTER_BOUND = 5  # max acceptable change for a single bus between epochs
 
 def readFile(filename):
     df = pandas.read_csv(filename)
     df['timestamp'] = [datetime.utcfromtimestamp(time/float(1000)) for time in df['timestamp']]
     # Do some filtering of outliers (temp > 50, could also check that pack is not similar to others) #TODO: clarify valid ranges
-    for num in ['1','2','3','4']:
-        df[df['batt.temp.bus%s' % num] > 50] = None
-        df[df['batt.temp.bus%s' % num] < -50] = None
+    prev_temp = [None] * 4
+    for i, row in df.iterrows():
+        if (row['sc.bootcount'] > 0): 
+            prev_temp = [None] * 4 # reset temperatures
+            continue # no temp readings so skip row
+        else:
+            curr_temp = [row['batt.temp.bus1'], row['batt.temp.bus2'], row['batt.temp.bus3'], row['batt.temp.bus4']]
+            curr_temp_median = median(curr_temp)
+            for v in [max(curr_temp), min(curr_temp)]:
+                if (abs(v - curr_temp_median) > INNER_BOUND):
+                    bus_num = curr_temp.index(v) + 1 
+                    df.at[i, 'batt.temp.bus%d' % bus_num] = None
+                    curr_temp[bus_num-1] = None
+
+            for bus_num in [1, 2, 3, 4]:
+                if ((prev_temp[bus_num-1]) and (curr_temp[bus_num-1])): # Can Compare
+                    if (abs(prev_temp[bus_num-1] - curr_temp[bus_num-1]) > OUTER_BOUND):
+                        df.at[i, 'batt.temp.bus%d' % bus_num] = None # mark data as invalid
+                        curr_temp[bus_num-1] = None
+            prev_temp = curr_temp
     return df
 
 def plotTime(df, sat):
