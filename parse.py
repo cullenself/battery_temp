@@ -1,5 +1,5 @@
 import pandas
-from datetime import datetime
+from datetime import datetime, timedelta
 from statistics import median
 
 # Histogram Bins
@@ -9,10 +9,12 @@ BINS[6] = 0.01 # adjust slightly so that temperature at exactly 0 show below rat
 INNER_BOUND = 15 # max acceptable difference between bus temps for a single epoch
 OUTER_BOUND = 5  # max acceptable change for a single bus between epochs
 
-def readFile(filename):
+def readFile(filename, ib=INNER_BOUND, ob=OUTER_BOUND):
     df = pandas.read_csv(filename)
     df['timestamp'] = [datetime.utcfromtimestamp(time/float(1000)) for time in df['timestamp']]
-    # Do some filtering of outliers (temp > 50, could also check that pack is not similar to others) #TODO: clarify valid ranges
+    return filterOutliers(df, ib, ob)
+
+def filterOutliers(df, ib, ob):
     prev_temp = [None] * 4
     for i, row in df.iterrows():
         if (row['sc.bootcount'] > 0): 
@@ -22,14 +24,14 @@ def readFile(filename):
             curr_temp = [row['batt.temp.bus1'], row['batt.temp.bus2'], row['batt.temp.bus3'], row['batt.temp.bus4']]
             curr_temp_median = median(curr_temp)
             for v in [max(curr_temp), min(curr_temp)]:
-                if (abs(v - curr_temp_median) > INNER_BOUND):
+                if (abs(v - curr_temp_median) > ib):
                     bus_num = curr_temp.index(v) + 1 
                     df.at[i, 'batt.temp.bus%d' % bus_num] = None
                     curr_temp[bus_num-1] = None
 
             for bus_num in [1, 2, 3, 4]:
                 if ((prev_temp[bus_num-1]) and (curr_temp[bus_num-1])): # Can Compare
-                    if (abs(prev_temp[bus_num-1] - curr_temp[bus_num-1]) > OUTER_BOUND):
+                    if (abs(prev_temp[bus_num-1] - curr_temp[bus_num-1]) > ob):
                         df.at[i, 'batt.temp.bus%d' % bus_num] = None # mark data as invalid
                         curr_temp[bus_num-1] = None
             prev_temp = curr_temp
@@ -64,3 +66,28 @@ def plotReduce(df, label):
     ax.set_ylabel('Frequency (%)')
     ax.set_xlabel('Temperature (C)')
     return df
+
+def countCycles(df, low_thresh, high_thresh):
+    col = 'batt.temp.bus%d'
+    heater = [False] * 4 # True => Heater On, False => Heater Off
+    count = 0
+    tot_time_on = timedelta()
+    time_on = [None] * 4
+    for i, row in df.iterrows():
+        if row['sc.bootcount'] > 0:
+            for bus in [1, 2, 3, 4]:
+                if heater[bus-1]:
+                    heater[bus-1] = False
+                    tot_time_on += row['timestamp'] - time_on[bus-1]
+            continue
+        for bus in [1, 2, 3, 4]:
+            if heater[bus-1]:
+                if row[col % bus] > high_thresh:
+                    heater[bus-1] = False
+                    tot_time_on += row['timestamp'] - time_on[bus-1]
+            if not heater[bus-1]:
+                if row[col % bus] < low_thresh:
+                    heater[bus-1] = True
+                    time_on[bus-1] = row['timestamp']
+                    count += 1
+    return count, tot_time_on
