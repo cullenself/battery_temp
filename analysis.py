@@ -1,17 +1,18 @@
+#!/usr/bin/env python3
+import sys
 from glob import glob
-from datetime import datetime, timedelta
+from datetime import timedelta
 import pandas as pd
 from matplotlib import pyplot as plt
-import sys
 import parse
 
 display_plots = len(sys.argv) > 1 # any command line args result in plots
 
 # Input
 filepaths = glob('./SatelliteData/satellite*.csv')
-dfs  = {} # Dictionary to hold dataframes
+dfs = {} # Dictionary to hold dataframes
 for path in filepaths:
-    print('Reading %s' % path) 
+    print('Reading %s' % path)
     sat = path[25:-4] # pull out the HWID
     dfs[sat] = parse.filterOutliers(parse.readFile(path))
 
@@ -32,13 +33,13 @@ if display_plots:
 else:
     plt.clf()
 ## Single Cycle
-ax = dfs['A'].head(75).plot(x='timestamp', 
-    y=['batt.temp.bus1', 'batt.temp.bus2', 'batt.temp.bus3', 'batt.temp.bus4'], 
-    title='Single Thermal Cycle, Satellite A (2017-07-17)')
+ax = dfs['A'].head(75).plot(x='timestamp',
+                            y=['batt.temp.bus1', 'batt.temp.bus2', 'batt.temp.bus3', 'batt.temp.bus4'],
+                            title='Single Thermal Cycle, Satellite A (2017-07-17)')
 ax.axhline(y=5, color='k', linestyle=':')
-ax.axhline(y=10,color='k', linestyle=':')
+ax.axhline(y=10, color='k', linestyle=':')
 ax.axhline(y=0, color='k')
-ax.set_ylabel('Temprature (C)');
+ax.set_ylabel('Temprature (C)')
 plt.savefig('./Images/TimeSeries_SatA_SingleCycle.png')
 if display_plots:
     plt.show()
@@ -88,12 +89,12 @@ else:
     plt.clf()
 ## Comparision
 print('\nResults:')
-count_act_below   = len(active_reduced.query("satA < 0 or satB < 0"))
-count_act_total   = len(active_reduced)
+count_act_below = len(active_reduced.query("satA < 0 or satB < 0"))
+count_act_total = len(active_reduced)
 act_percent = 100 * count_act_below / float(count_act_total)
 print('Count Active <= 0C: \t%d(/%d, %.2f%%)' % (count_act_below, count_act_total, act_percent))
-count_inact_below   = len(inactive_reduced.query("satA < 0 or satB < 0 or satC < 0"))
-count_inact_total   = len(inactive_reduced)
+count_inact_below = len(inactive_reduced.query("satA < 0 or satB < 0 or satC < 0"))
+count_inact_total = len(inactive_reduced)
 inact_percent = 100 * count_inact_below / float(count_inact_total)
 print('Count Inactive <= 0C: \t%d(/%d, %.2f%%)' % (count_inact_below, count_inact_total, inact_percent))
 decrease = 100 * (act_percent - inact_percent) / inact_percent
@@ -132,10 +133,11 @@ for sat in ['A', 'B']:
     active_count += count
     active_ontime += ontime
     active_time += active.loc[sat].iloc[-1]['timestamp'] - active.loc[sat].iloc[0]['timestamp']
-print('Patch Heater (High Thresholds):\n\t%d cycles over %s\n\t%.2f cycles per heater per day,\n\tapprox. %.2f%% duty cycle, or %.2f hours per heater per day' \
-        % (active_count, str(active_time), \
-           24*60*60*active_count/(4*active_time.total_seconds()), \
-           100*active_ontime/(4*active_time), 24*active_ontime/(4*active_time)))
+print(('Patch Heater (High Thresholds):\n\t%d cycles over %s\n\t%.2f cycles per heater per day,' +
+       '\n\tapprox. %.2f%% duty cycle, or %.2f hours per heater per day') \
+       % (active_count, str(active_time), \
+          24*60*60*active_count/(4*active_time.total_seconds()), \
+          100*active_ontime/(4*active_time), 24*active_ontime/(4*active_time)))
 inactive_ontime = timedelta()
 inactive_time = timedelta()
 inactive_count = 0
@@ -144,7 +146,8 @@ for sat in ['A', 'B', 'C']:
     inactive_count += count
     inactive_ontime += ontime
     inactive_time += inactive.loc[sat].iloc[-1]['timestamp'] - inactive.loc[sat].iloc[0]['timestamp']
-print('Patch Heater (Low Thresholds):\n\t%d cycles over %s\n\t%.2f cycles per heater per day,\n\tapprox. %.2f%% duty cycle, or %.2f hours per heater per day' \
-        % (inactive_count, str(inactive_time), \
-           24*60*60*inactive_count/(4*inactive_time.total_seconds()), \
-           100*inactive_ontime/(4*inactive_time), 24*inactive_ontime/(4*inactive_time)))
+print(('Patch Heater (Low Thresholds):\n\t%d cycles over %s\n\t%.2f cycles per heater per day,' +
+       '\n\tapprox. %.2f%% duty cycle, or %.2f hours per heater per day') \
+       % (inactive_count, str(inactive_time), \
+          24*60*60*inactive_count/(4*inactive_time.total_seconds()), \
+          100*inactive_ontime/(4*inactive_time), 24*inactive_ontime/(4*inactive_time)))
