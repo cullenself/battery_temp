@@ -54,15 +54,17 @@ def plotDist(df, sat):
     ax = df.plot(y=['batt.temp.bus1', 'batt.temp.bus2', 'batt.temp.bus3', 'batt.temp.bus4'], kind='hist', xlim=(-30,50), bins=BINS, stacked=True, figsize=(8,8), title='Battery Pack Temperature Distribution, Satellite %s' % sat, legend=True)
     ax.set_xlabel('Temperature (C)')
 
-# Consolidate DataFrame, dropping bus information, then plot time series and histogram
-def plotReduce(df, label):
+def reduce(df):
     col = 'batt.temp.bus%d'
     temps = []
     for i, row in df.iterrows():
         for bus_num in [1, 2, 3, 4]: 
             temps.append({'timestamp': row['timestamp'], 'sat%s' % i[0]: row[col % bus_num]})
     df = pandas.DataFrame(temps)
-    df = df.dropna(thresh=2) # drop if both rows are NaN
+    return df.dropna(thresh=2) # drop if both rows are NaN
+
+# Plot time series and histogram of reduced data
+def plotReduced(df, label):
     sats = list(df.columns) # e.g. ['timestamp', 'satA', 'satB', ('satC', maybe) ]
     sats.remove('timestamp')
 
@@ -75,7 +77,6 @@ def plotReduce(df, label):
     ax = df.plot(y=sats, kind='hist', xlim=(-30,50), bins=BINS, density=True, title='Battery Pack Temperature Distribution (%s)' % label, legend=True)
     ax.set_ylabel('Frequency (%)')
     ax.set_xlabel('Temperature (C)')
-    return df
 
 # Count transitions (either heater on/off events, or dropping below/above 0C)
 def countCycles(df, low_thresh, high_thresh):
