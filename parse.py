@@ -45,24 +45,26 @@ def plotTime(df, sat):
         ax.axhline(y=0, color='k')
 
 def plotDist(df, sat):
-    axs = df.plot(y=['batt.temp.bus1', 'batt.temp.bus2', 'batt.temp.bus3', 'batt.temp.bus4'], kind='hist', xlim=(-30,50), bins=BINS, subplots=True, sharex=False, figsize=(8,8), title='Battery Pack Temperature Distribution, Satellite %s' % sat, legend=True)
-    for ax in axs:
-        ax.set_xlabel('Temperature (C)')
+    ax = df.plot(y=['batt.temp.bus1', 'batt.temp.bus2', 'batt.temp.bus3', 'batt.temp.bus4'], kind='hist', xlim=(-30,50), bins=BINS, stacked=True, figsize=(8,8), title='Battery Pack Temperature Distribution, Satellite %s' % sat, legend=True)
+    ax.set_xlabel('Temperature (C)')
     #TODO: better ylabels
 
 def plotReduce(df, label):
+    col = 'batt.temp.bus%d'
     temps = []
-    for row in df.itertuples():
-        for i in range(2, 5+1): 
-            if row[i]:
-                temps.append((row.timestamp, row[i]))
-    df = pandas.DataFrame(temps, columns=['timestamp', 'batt.temp'])
-    ax = df.plot(x='timestamp', y='batt.temp', kind='line', style='.', legend=False, title='Battery Pack Temperature vs Time (%s)' % label)
+    for i, row in df.iterrows():
+        for bus_num in [1, 2, 3, 4]: 
+            temps.append({'timestamp': row['timestamp'], 'sat%s' % i[0]: row[col % bus_num]})
+    df = pandas.DataFrame(temps)
+    df = df.dropna(thresh=2)
+    sats = list(df.columns)
+    sats.remove('timestamp')
+    ax = df.plot(x='timestamp', y=sats, kind='line', style='.', alpha=0.5, title='Battery Pack Temperature vs Time (%s)' % label, legend=True)
     ax.set_ylabel('Temperature (C)')
     ax.set_xlabel('Date')
     ax.axhline(y=0, color='k')
 
-    ax = df.plot(y='batt.temp', kind='hist', xlim=(-30,50), bins=BINS, density=True, title='Battery Pack Temperature Distribution (%s)' % label, legend=False)
+    ax = df.plot(y=sats, kind='hist', xlim=(-30,50), bins=BINS, density=True, title='Battery Pack Temperature Distribution (%s)' % label, legend=True)
     ax.set_ylabel('Frequency (%)')
     ax.set_xlabel('Temperature (C)')
     return df
